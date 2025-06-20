@@ -1,0 +1,4 @@
+/home/mac/projects/mecsim/build/CMakeFiles/mecsim.dir
+/home/mac/projects/mecsim/build/CMakeFiles/2dscene.dir
+/home/mac/projects/mecsim/build/CMakeFiles/edit_cache.dir
+/home/mac/projects/mecsim/build/CMakeFiles/rebuild_cache.dir
