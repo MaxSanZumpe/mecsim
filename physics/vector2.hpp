@@ -14,24 +14,24 @@ struct vector2
 };
 
 
-vector2 operator+(const vector2& v, const vector2& w)
+inline vector2 operator+(const vector2& v, const vector2& w)
 {
     return vector2 { v.x + w.x, v.y + w.y };
 }
 
-vector2 operator-(const vector2& v, const vector2& w)
+inline vector2 operator-(const vector2& v, const vector2& w)
 {
     return vector2 { v.x - w.x, v.y - w.y };
 }
 
-vector2& operator+=(vector2& v, const vector2& w)
+inline vector2& operator+=(vector2& v, const vector2& w)
 {
     v.x += w.x;
     v.y += w.y;
     return v;
 }
 
-double operator*(const vector2& v, const vector2& w)
+inline double operator*(const vector2& v, const vector2& w)
 {
     return v.x * w.x + v.y * w.y;
 }
