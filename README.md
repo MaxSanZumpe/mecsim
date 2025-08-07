@@ -15,9 +15,9 @@ Make sure all dependencies are installed on your system.
 ### Depedencies
 |         | Install command                      |
 |---------|--------------------------------------|
-|  glfw3  | sudo apt-get install libglfw3        |
-|         | sudo apt-get install libglfw3-dev    |
-|   glm   |sudo apt install libglm-dev           |
+|  glfw3  | sudo apt install libglfw3        |
+|         | sudo apt install libglfw3-dev    |
+|   glm   | sudo apt install libglm-dev      |
 
 
 
