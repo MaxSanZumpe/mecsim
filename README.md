@@ -5,10 +5,10 @@ A simple simulator for mechanical systems
 This project uses Cmake as a build tool.
 Clone this repository, navigate to it and type:
 
-mkdir build
-cd build
-cmake ../
-make 
+- mkdir build
+- cd build
+- cmake ../
+- make 
 
 Make sure all dependencies are installed on your system.
 
