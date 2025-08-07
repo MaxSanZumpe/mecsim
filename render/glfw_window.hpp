@@ -12,13 +12,64 @@
 
 #include "camera.hpp"
 
+struct GLFW
+{
+    GLFW(int major_gl_version, int minor_gl_version) 
+    {
+        if(!glfwInit()) {
+            std::cerr << "ERROR::GLFW_INIT_FAILED" << '\n';
+            glfwTerminate();
+        }
+    
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, major_gl_version);
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, minor_gl_version);
+        glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    }
+    ~GLFW()
+    {
+        glfwTerminate();
+    }
+};
+
+
+struct FpsTimer 
+{
+    int nbFrames {};
+    double currentTime {};
+    double deltaTime {};
+    double lastTime = glfwGetTime();
+    double lastFPSTime = lastTime;
+
+    double fps {};
+
+    float update() 
+    {
+        currentTime   = glfwGetTime();
+        deltaTime     = currentTime - lastTime;
+        lastTime = currentTime;
+        nbFrames++;
+
+        if (currentTime - lastFPSTime >= 1.0) {
+            fps = static_cast<double>(nbFrames) / (currentTime - lastFPSTime);
+
+            nbFrames = 0;  
+            lastFPSTime = currentTime; 
+        }
+
+        return deltaTime;
+    }
+};
+
 
 class Window 
 {
     private: 
         GLFWwindow* m_window {};
         std::array<GLfloat, 4> m_background_rgbo { 0.0, 0.0, 0.0, 0.0 }; 
-        
+
+
+        std::unique_ptr<Camera> camera {};
+
         glm::mat4 m_view {};
         glm::mat4 m_projection {};
         unsigned int m_view_projection_ubo {};
@@ -30,7 +81,7 @@ class Window
 
     public:
         Window(const unsigned int width, const unsigned int height, const char* title) 
-        {
+        {   
             m_window = glfwCreateWindow(width, height, title, NULL, NULL);
             if (m_window == NULL)
             {
@@ -38,8 +89,6 @@ class Window
                 glfwTerminate();
             }
         }
-
-        GLFWwindow* get_window_ptr() { return m_window; }
 
         void set_background_color(GLfloat red, GLfloat green, GLfloat blue, GLfloat opacity)
         {
@@ -52,6 +101,7 @@ class Window
         GLFWwindow* activate()
         {
             glfwMakeContextCurrent(m_window);
+
             if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
                 std::cerr << "ERROR::GLAD::FAILED_INITIALIZATION" << '\n';
                 glfwTerminate();
@@ -60,8 +110,9 @@ class Window
             
             glfwSwapInterval(1);
             glfwWindowHint(GLFW_SAMPLES, 16);
-            
+
             glEnable(GL_MULTISAMPLE);
+            
 
             glEnable(GL_DEPTH_TEST);
             glEnable(GL_BLEND);
@@ -82,10 +133,18 @@ class Window
             
             return m_window;
         }
+        
+        void bind_camera(unsigned int width)
+        {   
+            camera = std::make_unique<Ortho2D>(m_window, width);
+        }
+
+        bool shouldClose() { return glfwWindowShouldClose(m_window); }
 
         void processInput(float deltaFrame)
-        {
-            auto* cam = static_cast<camera::Camera*>(glfwGetWindowUserPointer(m_window));
+        {   
+            glfwPollEvents();
+            auto* cam = static_cast<Camera*>(glfwGetWindowUserPointer(m_window));
             if (cam){
                 cam->process_camera_inputs(m_window, deltaFrame);
 
@@ -104,6 +163,11 @@ class Window
         {
             glClearColor(m_background_rgbo[0], m_background_rgbo[1], m_background_rgbo[2], m_background_rgbo[3]);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        }
+
+        void swap_buffers() const 
+        {
+            glfwSwapBuffers(m_window);
         }
 
         float aspectRatio() const 

@@ -2,76 +2,58 @@
 #include "OdeSolver.hpp"
 
 
-void OdeSolver::fill_particle_state_buffer()
+void OdeSolver::fill_body_state_buffer()
 {   
     size_t i = 0;
-    m_particle_state_buffer.resize(4 * m_sys->get_particles().size());
-    for (auto& p : m_sys->get_particles()) {
-        m_particle_state_buffer[i++] = p->position.x;
-        m_particle_state_buffer[i++] = p->position.y;
-        m_particle_state_buffer[i++] = p->velocity.x;
-        m_particle_state_buffer[i++] = p->velocity.y;
-    }
-}
-
-void OdeSolver::fill_rigid_body_state_buffer()
-{   
-    size_t i = 0;
-    m_particle_state_buffer.resize(6 * m_sys->get_rigid_bodies().size());
+    m_body_state_buffer.resize(6 * m_sys->get_rigid_bodies().size());
     for (auto& b : m_sys->get_rigid_bodies()) {
-        m_particle_state_buffer[i++] = b->position.x;
-        m_particle_state_buffer[i++] = b->position.y;
-        m_particle_state_buffer[i++] = b->angle;
-        m_particle_state_buffer[i++] = b->velocity.x;
-        m_particle_state_buffer[i++] = b->velocity.y;
-        m_particle_state_buffer[i++] = b->angular_velocity;
+        m_body_state_buffer[i++] = b->angle;
+        m_body_state_buffer[i++] = b->angular_velocity;
+        m_body_state_buffer[i++] = b->position.x;
+        m_body_state_buffer[i++] = b->position.y;
+        m_body_state_buffer[i++] = b->velocity.x;
+        m_body_state_buffer[i++] = b->velocity.y;
     }
 }
 
-void OdeSolver::scatter_particle_state_buffer()
-{   
-    size_t i = 0;
-    for (auto& p : m_sys->get_particles()) {
-        p->position.x = m_particle_state_buffer[i++];
-        p->position.y = m_particle_state_buffer[i++];
-        p->velocity.x = m_particle_state_buffer[i++];
-        p->velocity.y = m_particle_state_buffer[i++];
-    }
-}
 
-void OdeSolver::scatter_rigid_body_state_buffer()
+void OdeSolver::scatter_body_state_buffer()
 {   
     size_t i = 0;
-    m_particle_state_buffer.resize(6 * m_sys->get_particles().size());
     for (auto& b : m_sys->get_rigid_bodies()) {
-        b->position.x       = m_particle_state_buffer[i++];
-        b->position.y       = m_particle_state_buffer[i++];
-        b->angle            = m_particle_state_buffer[i++];
-        b->velocity.x       = m_particle_state_buffer[i++];
-        b->velocity.y       = m_particle_state_buffer[i++];
-        b->angular_velocity = m_particle_state_buffer[i++];
+        b->angle            = m_body_state_buffer[i++];
+        b->angular_velocity = m_body_state_buffer[i++];
+        b->position.x       = m_body_state_buffer[i++];
+        b->position.y       = m_body_state_buffer[i++];
+        b->velocity.x       = m_body_state_buffer[i++];
+        b->velocity.y       = m_body_state_buffer[i++];
     }
 }
 
-void ForwardEuler::step()
+
+void OdeSolver::backtrack(double time_step)
 {
-    //m_sys->clear_forces_and_torques();
-    //m_sys->compute_forces_and_torques();
-    double h = m_sys->get_config().time_step;
-    
-    for (auto& p : m_sys->get_particles())
-    {
-        p->position += h * p->velocity;
-        p->velocity += h * p->force_accumulator / p->get_mass();;
-    }
+    scatter_body_state_buffer();
+    m_sys->backtrack_time(time_step);
+}
+
+
+void ForwardEuler::step(double time_step)
+{   
+    fill_body_state_buffer();
+    m_sys->clear_forces_and_torques();
+    m_sys->compute_forces_and_torques();
+    double h = time_step;
 
     for (auto& b : m_sys->get_rigid_bodies())
     {
         b->angle            += h * b->angular_velocity;
-        b->angular_velocity += h * b->torque_accumulator / b->get_inertia();
-
+        b->angular_velocity += h * b->torque_accumulator * b->get_inverse_inertia();
+        
         b->position += h * b->velocity;
-        b->velocity += h * b->force_accumulator / b->get_mass();
+        b->velocity += h * b->force_accumulator * b->get_inverse_mass();
+
+        b->update_polygon_features();
     }
     
     m_sys->accumulate_time(h);
@@ -194,28 +176,32 @@ void ForwardEuler::step()
 // }
 
 
-// void LeapFrog::step() 
-// {
-//     double h = m_sys->get_config().time_step;
+void LeapFrog::step(double time_step) 
+{   
+    fill_body_state_buffer();
+    double h = time_step;
 
-//     m_sys->clear_forces();
-//     m_sys->compute_forces();
+    m_sys->clear_forces_and_torques();
+    m_sys->compute_forces_and_torques();
 
-//     for (auto& p : m_sys->get_particles()) {
-//         float m = p->get_mass();
-//         p->velocity += h/2 * p->accumulator / m;
-//         p->position += h   * p->velocity; 
-//     }
+    for (auto& b : m_sys->get_rigid_bodies()) {
+        b->velocity += 0.5 * h * b->force_accumulator * b->get_inverse_mass();
+        b->position += h * b->velocity;
+    
+        b->angular_velocity += 0.5 * h * b->torque_accumulator * b->get_inverse_inertia();
+        b->angle    += h * b->angular_velocity;
+    }
 
-//     m_sys->time += h;
-//     m_sys->clear_forces();
-//     m_sys->compute_forces();
+    m_sys->accumulate_time(h);
+    m_sys->clear_forces_and_torques();
+    m_sys->compute_forces_and_torques();
 
-//     for (auto& p : m_sys->get_particles()) {
-//         float m = p->get_mass();
-//         p->velocity += h/2 * p->accumulator / m;
-//     }
-// }
+    for (auto& b : m_sys->get_rigid_bodies()) {
+        b->velocity         += 0.5 * h * b->force_accumulator  * b->get_inverse_mass();
+        b->angular_velocity += 0.5 * h * b->torque_accumulator * b->get_inverse_inertia();
+        b->update_polygon_features();
+    }
+}
 
 
 std::unique_ptr<OdeSolver> ode_solver_make_unique(OdeSolverType type, System* sys) 
@@ -224,9 +210,9 @@ std::unique_ptr<OdeSolver> ode_solver_make_unique(OdeSolverType type, System* sy
     {   
         case OdeSolverType::UNDEFINED_ODE:  return nullptr;
         case OdeSolverType::FORWARD_EULER:  return std::make_unique<ForwardEuler>(sys);
-        // case OdeSolverType::IMPROVED_EULER: return std::make_unique<ImprovedEuler>(sys);
-        // case OdeSolverType::RUNGE_KUTTA4:   return std::make_unique<RungeKutta4>(sys);
-        // case OdeSolverType::LEAPFROG:       return std::make_unique<LeapFrog>(sys);
+        case OdeSolverType::IMPROVED_EULER: return nullptr;
+        case OdeSolverType::RUNGE_KUTTA4:   return nullptr;
+        case OdeSolverType::LEAPFROG:       return std::make_unique<LeapFrog>(sys);
     }
 
     return nullptr;

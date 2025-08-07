@@ -13,8 +13,6 @@ enum CAMERA_OPTIONS
     FLY3D,
 };
 
-namespace camera
-{
 
 class Camera 
 {      
@@ -62,11 +60,11 @@ class Fly3D : public Camera
         bool firstMouse { true }; 
 
         float zoom = 45.0f;
-
+        
+        GLFWwindow* m_window { nullptr };
         float lastX {};
         float lastY {};
 
-        GLFWwindow* m_window { nullptr };
 
         Fly3D(GLFWwindow* window, const unsigned world_width, const unsigned world_height) : 
             m_window(window), lastX(world_width/2), lastY(world_height/2)
@@ -142,10 +140,11 @@ class Fly3D : public Camera
 class Ortho2D : public Camera
 {
     public: 
+        GLFWwindow* m_window { nullptr };
+        
         float view_width {};
         float world_width {};
 
-        GLFWwindow* m_window { nullptr };
 
         Ortho2D(GLFWwindow* window, const unsigned world_width): 
                 m_window(window), world_width(world_width)
@@ -204,6 +203,5 @@ class Ortho2D : public Camera
         }
 };
 
-}
 
 #endif 
