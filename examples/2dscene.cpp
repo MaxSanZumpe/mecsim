@@ -1,49 +1,24 @@
-#include "renderer.hpp"
-#include "System.hpp"
-
 #include <string>
+
+#include "System.hpp"
+#include "sim_scene.hpp"
+#include "parameters.hpp"
 
 int main() 
 {   
-    System sys {};
-    Scene scene { 100, 100 };
-    sys.add_particle(1, { 0, 0 }, { 1, 0 });
-    scene.circle_buffer.add_circle(0, 0, 0.5, sys.get_particles()[0]->get_id());
+    SimScene sim {};
 
-    sys.add_rigid_body(1, 1, {{ 1.0, 1.0 }}, 0, 1, {0, 0}, {0, 0});
-    sys.add_rigid_body(3, 3, {{ 1.0, 1.0 }}, 0, 1, {3, 3}, {0, 0});
+    sim.physics.set_global_gravity_flag(true);
 
+    ElipseParameters elipse { 1, 1 };
+    RectangleParameters rectangle { 1, 2 };
 
-    int nsides = 6;
-    std::vector<float> m_vertices {};
-    m_vertices.push_back(0.0f);  
-    m_vertices.push_back(0.0f);  
-    m_vertices.push_back(0.0f);  
-    m_vertices.push_back(1.0f);  
-    m_vertices.push_back(1.0f);  
-    m_vertices.push_back(1.0f);  
+    RigidBody* b0 = sim.add_rotational_object(1, 0, 0, { 0, 0 }, &rectangle);
+    RigidBody* b1 = sim.add_dynamic_object(1, 0, 0, { 3, 3 }, { 0, 0 }, &elipse);
 
-    for (int i = 0; i <= nsides; ++i) {
-        float angle = 2.0f * M_PI * i / nsides;
-        float x = std::cos(angle);
-        float y = std::sin(angle);
-        m_vertices.push_back(x);    
-        m_vertices.push_back(y);
-        m_vertices.push_back(0.0f);
-        
-        m_vertices.push_back(1.0f); 
-        m_vertices.push_back(1.0f); 
-        m_vertices.push_back(1.0f); 
-    }
+    sim.add_spring_connector(b0, b1, OFFSET_25_ANGLE_30, OFFSET_25_ANGLE_30, 2, 1);
 
-    scene.polygon_buffers.emplace_back(m_vertices);
-    scene.polygon_buffers[0].add_polygon(0, 0, 0, 1, sys.get_rigid_bodies()[0]->get_id());
-    scene.polygon_buffers[0].add_polygon(0, 0, 0, 1, sys.get_rigid_bodies()[1]->get_id());
-
-
-    scene.animator.bind_physics_system(&sys);
-    Renderer renderer {};
-    renderer.render(&scene);
+    sim.draw();
 
     return 0;
 };
