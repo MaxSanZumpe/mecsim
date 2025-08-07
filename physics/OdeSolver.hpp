@@ -36,17 +36,10 @@ class OdeSolver
         std::vector<double> m_velocity_buffer {};
         std::vector<double> m_angular_velocity_buffer{};
         
-        std::vector<double> m_particle_state_buffer {};
-        std::vector<double> m_rigid_body_state_buffer {};
+        std::vector<double> m_body_state_buffer {};
         
-        void fill_particle_state_buffer();
-        void fill_rigid_body_state_buffer();
-
-        void scatter_particle_state_buffer();
-        void scatter_rigid_body_state_buffer();
-
-        // void fill_particle_position_buffer();
-        // void fill_particle_velocity_buffer();
+        void fill_body_state_buffer();
+        void scatter_body_state_buffer();
 
         // void fill_rigid_body_position_buffer();
         // void fill_rigid_body_velocity_buffer();
@@ -54,8 +47,11 @@ class OdeSolver
 
     public:
         OdeSolver(System* sys) : m_sys(sys) {} 
+
+        void backtrack(double time_step);
+
         virtual ~OdeSolver() = default;
-        virtual void step() = 0;
+        virtual void step(double time_step) = 0;
 };
 
 
@@ -63,7 +59,7 @@ class ForwardEuler : public OdeSolver
 {
     public:
         ForwardEuler(System* sys) : OdeSolver(sys) {}
-        void step() override;
+        void step(double time_step) override;
 };
 
 
@@ -83,12 +79,12 @@ class ForwardEuler : public OdeSolver
 // };
 
 
-// class LeapFrog : public OdeSolver
-// {
-//     public:
-//         LeapFrog(System* sys) : OdeSolver(sys) {}
-//         void step() override;
-// };
+class LeapFrog : public OdeSolver
+{
+    public:
+        LeapFrog(System* sys) : OdeSolver(sys) {}
+        void step(double time_step) override;
+};
 
 
 std::unique_ptr<OdeSolver> ode_solver_make_unique(OdeSolverType type, System* sys); 
